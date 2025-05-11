@@ -1,37 +1,33 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const fs = require('fs');
 const { DOMParser } = require('@xmldom/xmldom');
 const { SignedXml } = require('xml-crypto');
+const bodyParser = require('body-parser');
 
 const app = express();
-app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.json({ limit: '10mb' }));
 
 app.post('/sign', (req, res) => {
-  const { xml, tag } = req.body;
-
   try {
-    const privateKey = fs.readFileSync('./cert/private.pem', 'utf-8');
-    const certificate = fs.readFileSync('./cert/cert.pem', 'utf-8');
+    const { xml, tag, cert, key } = req.body;
+
+    if (!xml || !tag || !cert || !key) {
+      return res.status(400).json({ error: 'Missing xml, tag, cert, or key' });
+    }
 
     const sig = new SignedXml();
-    sig.addReference(
-      `//*[local-name(.)='${tag}']`,
-      ['http://www.w3.org/2000/09/xmldsig#enveloped-signature'],
-      'http://www.w3.org/2000/09/xmldsig#sha1'
-    );
-
-    sig.signingKey = privateKey;
+    sig.addReference(`//*[local-name(.)='${tag}']`);
+    sig.signingKey = key;
     sig.keyInfoProvider = {
-      getKeyInfo: () => `<X509Data></X509Data>`
+      getKeyInfo: () => `<X509Data></X509Data>`,
+      getKey: () => cert
     };
 
     sig.computeSignature(xml);
 
-    res.json({ signedXml: sig.getSignedXml() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.send(sig.getSignedXml());
+  } catch (e) {
+    return res.status(500).json({ error: 'Signature failed', detail: e.message });
   }
 });
 
-app.listen(3000, () => console.log('🚀 API de assinatura rodando na porta 3000'));
+app.listen(3000, () => console.log('Ready on port 3000'));
