@@ -5,7 +5,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "xml-crypto": "^2.1.5",
-    "xmldom": "0.7.2",
+    "@xmldom/xmldom": "^0.8.10",
     "body-parser": "^1.20.2"
   }
 }
